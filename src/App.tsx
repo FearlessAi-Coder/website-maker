@@ -1,794 +1,954 @@
-import { useMemo, useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import './App.css';
 
-type SectionType = 'hero' | 'features' | 'metrics' | 'showcase' | 'pricing' | 'testimonial' | 'cta';
-
-type SectionItem = {
+interface Block {
   id: string;
-  type: SectionType;
-  eyebrow: string;
-  title: string;
-  subtitle: string;
-  ctaText: string;
-  accent: string;
-  body: string[];
-};
+  type: 'hero' | 'features' | 'pricing' | 'testimonial' | 'cta' | 'gallery' | 'team' | 'faq';
+  content: Record<string, any>;
+}
 
-type Theme = {
-  primary: string;
-  background: string;
-  panel: string;
-  ink: string;
-  muted: string;
-};
-
-const blockLibrary: Record<
-  SectionType,
-  {
-    label: string;
-    eyebrow: string;
-    defaultTitle: string;
-    subtitle: string;
-    ctaText: string;
-    accent: string;
-    body: string[];
-  }
-> = {
-  hero: {
-    label: 'Hero',
-    eyebrow: 'Launch faster',
-    defaultTitle: 'Build a site that feels premium from day one.',
-    subtitle:
-      'Turn ideas into polished, conversion-ready pages with lightning-fast layouts and a premium visual system.',
-    ctaText: 'Start free',
-    accent: '#6d5ef6',
-    body: ['Responsive', 'Fast launch', 'Ready to convert'],
-  },
-  features: {
-    label: 'Features',
-    eyebrow: 'Why teams love it',
-    defaultTitle: 'Everything your site needs to win attention.',
-    subtitle:
-      'Create crisp, elegant experiences with flexible sections, reusable blocks, and polished CMS-ready layouts.',
-    ctaText: 'Explore more',
-    accent: '#00c2a8',
-    body: ['Drag-and-drop', 'Smart styling', 'Built to scale'],
-  },
-  metrics: {
-    label: 'Metrics',
-    eyebrow: 'Results that speak',
-    defaultTitle: 'Track traction with a site that compels action.',
-    subtitle:
-      'Combine crisp storytelling with proof points that turn curious visitors into motivated buyers.',
-    ctaText: 'See proof',
-    accent: '#ff7a59',
-    body: ['4.9/5 ratings', '2x faster launch', '18k+ users'],
-  },
-  showcase: {
-    label: 'Showcase',
-    eyebrow: 'Work that stands out',
-    defaultTitle: 'Presentation that feels as premium as your product.',
-    subtitle:
-      'Highlight key wins, product flows, and visual narratives without forcing complex code or design work.',
-    ctaText: 'View demo',
-    accent: '#ffb703',
-    body: ['Landing pages', 'Growth campaigns', 'Brand stories'],
-  },
-  pricing: {
-    label: 'Pricing',
-    eyebrow: 'Simple plans',
-    defaultTitle: 'Straightforward pricing for ambitious teams.',
-    subtitle:
-      'Move from concept to launch with pricing that stays clear, flexible, and confidently growth-ready.',
-    ctaText: 'Choose plan',
-    accent: '#8b5cf6',
-    body: ['Starter', 'Growth', 'Scale'],
-  },
-  testimonial: {
-    label: 'Testimonial',
-    eyebrow: 'Loved by founders',
-    defaultTitle: 'Creators and teams trust the workflow.',
-    subtitle:
-      'From solo creators to product teams, people use the builder to launch polished pages without friction.',
-    ctaText: 'Read stories',
-    accent: '#ef476f',
-    body: ['“We launched in a day.”', '“It feels like a premium studio.”'],
-  },
-  cta: {
-    label: 'CTA',
-    eyebrow: 'Ready to launch?',
-    defaultTitle: 'Turn your next idea into a high-converting site.',
-    subtitle:
-      'The fastest route from blank page to beautifully branded website is ready when you are.',
-    ctaText: 'Book a demo',
-    accent: '#3b82f6',
-    body: ['No-code power', 'Full control', 'Ship faster'],
-  },
-};
-
-const initialSections: SectionItem[] = [
-  {
-    id: 'hero-1',
-    type: 'hero',
-    eyebrow: 'Launch faster',
-    title: 'Build a site that feels premium from day one.',
-    subtitle:
-      'Turn ideas into polished, conversion-ready pages with lightning-fast layouts and a premium visual system.',
-    ctaText: 'Start free',
-    accent: '#6d5ef6',
-    body: ['Responsive', 'Fast launch', 'Ready to convert'],
-  },
-  {
-    id: 'features-1',
-    type: 'features',
-    eyebrow: 'Why teams love it',
-    title: 'Everything your site needs to win attention.',
-    subtitle:
-      'Create crisp, elegant experiences with flexible sections, reusable blocks, and polished CMS-ready layouts.',
-    ctaText: 'Explore more',
-    accent: '#00c2a8',
-    body: ['Drag-and-drop', 'Smart styling', 'Built to scale'],
-  },
-  {
-    id: 'pricing-1',
-    type: 'pricing',
-    eyebrow: 'Simple plans',
-    title: 'Straightforward pricing for ambitious teams.',
-    subtitle:
-      'Move from concept to launch with pricing that stays clear, flexible, and confidently growth-ready.',
-    ctaText: 'Choose plan',
-    accent: '#8b5cf6',
-    body: ['Starter', 'Growth', 'Scale'],
-  },
-];
+interface Theme {
+  primaryColor: string;
+  secondaryColor: string;
+  backgroundColor: string;
+  textColor: string;
+  accentColor: string;
+  fontFamily: string;
+}
 
 const defaultTheme: Theme = {
-  primary: '#6d5ef6',
-  background: '#f5f6ff',
-  panel: '#ffffff',
-  ink: '#111827',
-  muted: '#57606d',
+  primaryColor: '#6366f1',
+  secondaryColor: '#8b5cf6',
+  backgroundColor: '#ffffff',
+  textColor: '#1f2937',
+  accentColor: '#ec4899',
+  fontFamily: 'Inter, sans-serif',
+};
+
+const blockDefaults = {
+  hero: {
+    title: 'Welcome to Your Website',
+    subtitle: 'Build something amazing today',
+    buttonText: 'Get Started',
+    backgroundImage: '',
+    height: 'large',
+  },
+  features: {
+    title: 'Our Features',
+    description: 'Everything you need',
+    items: [
+      { icon: '⚡', title: 'Fast', description: 'Lightning quick performance' },
+      { icon: '🔒', title: 'Secure', description: 'Enterprise-grade security' },
+      { icon: '📱', title: 'Responsive', description: 'Works on all devices' },
+    ],
+  },
+  pricing: {
+    title: 'Simple Pricing',
+    description: 'Choose the perfect plan',
+    plans: [
+      { name: 'Starter', price: '$29', features: ['Feature 1', 'Feature 2', 'Feature 3'] },
+      { name: 'Pro', price: '$79', features: ['All Starter features', 'Feature 4', 'Feature 5'] },
+      { name: 'Enterprise', price: 'Custom', features: ['Everything', 'Priority support', 'Custom features'] },
+    ],
+  },
+  testimonial: {
+    quote: 'This product changed our business completely!',
+    author: 'John Doe',
+    position: 'CEO, Company Inc',
+    image: '',
+  },
+  cta: {
+    title: 'Ready to get started?',
+    description: 'Join thousands of satisfied customers',
+    buttonText: 'Start Free Trial',
+  },
+  gallery: {
+    title: 'Our Work',
+    images: [
+      { url: 'https://images.unsplash.com/photo-1579353977991-54640212af0d?w=500&h=500&fit=crop', alt: 'Gallery 1' },
+      { url: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=500&h=500&fit=crop', alt: 'Gallery 2' },
+      { url: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=500&h=500&fit=crop', alt: 'Gallery 3' },
+    ],
+  },
+  team: {
+    title: 'Meet Our Team',
+    members: [
+      { name: 'Alice Johnson', role: 'Founder & CEO', image: 'https://i.pravatar.cc/150?img=1' },
+      { name: 'Bob Smith', role: 'CTO', image: 'https://i.pravatar.cc/150?img=2' },
+      { name: 'Carol White', role: 'Head of Design', image: 'https://i.pravatar.cc/150?img=3' },
+    ],
+  },
+  faq: {
+    title: 'Frequently Asked Questions',
+    questions: [
+      { q: 'How do I get started?', a: 'Simply sign up and start building!' },
+      { q: 'Is there a free trial?', a: 'Yes, 14 days free, no credit card required.' },
+      { q: 'Can I cancel anytime?', a: 'Absolutely, cancel anytime with no questions asked.' },
+    ],
+  },
 };
 
 function App() {
-  const [sections, setSections] = useState<SectionItem[]>(initialSections);
-  const [selectedId, setSelectedId] = useState<string>(initialSections[0].id);
-  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [blocks, setBlocks] = useState<Block[]>([
+    {
+      id: '1',
+      type: 'hero',
+      content: blockDefaults.hero,
+    },
+    {
+      id: '2',
+      type: 'features',
+      content: blockDefaults.features,
+    },
+    {
+      id: '3',
+      type: 'pricing',
+      content: blockDefaults.pricing,
+    },
+  ]);
+
   const [theme, setTheme] = useState<Theme>(defaultTheme);
+  const [selectedBlockId, setSelectedBlockId] = useState<string | null>('1');
+  const [showPreview, setShowPreview] = useState(false);
+  const previewRef = useRef<HTMLDivElement>(null);
 
-  const selectedSection = useMemo(
-    () => sections.find((section) => section.id === selectedId) ?? sections[0],
-    [sections, selectedId],
-  );
+  const selectedBlock = blocks.find(b => b.id === selectedBlockId);
 
-  const addSection = (type: SectionType) => {
-    const preset = blockLibrary[type];
-    const newSection: SectionItem = {
-      id: crypto.randomUUID(),
+  const addBlock = (type: Block['type']) => {
+    const newBlock: Block = {
+      id: Date.now().toString(),
       type,
-      eyebrow: preset.eyebrow,
-      title: preset.defaultTitle,
-      subtitle: preset.subtitle,
-      ctaText: preset.ctaText,
-      accent: preset.accent,
-      body: preset.body,
+      content: blockDefaults[type],
     };
-
-    setSections((current) => [...current, newSection]);
-    setSelectedId(newSection.id);
+    setBlocks([...blocks, newBlock]);
+    setSelectedBlockId(newBlock.id);
   };
 
-  const updateSelected = (changes: Partial<SectionItem>) => {
-    if (!selectedSection) return;
-
-    setSections((current) =>
-      current.map((section) =>
-        section.id === selectedSection.id ? { ...section, ...changes } : section,
-      ),
-    );
+  const deleteBlock = (id: string) => {
+    setBlocks(blocks.filter(b => b.id !== id));
+    if (selectedBlockId === id) {
+      setSelectedBlockId(blocks[0]?.id || null);
+    }
   };
 
-  const removeSelected = () => {
-    if (!selectedSection || sections.length === 1) return;
-
-    const nextSections = sections.filter((section) => section.id !== selectedSection.id);
-    setSections(nextSections);
-    setSelectedId(nextSections[0].id);
+  const updateBlockContent = (id: string, newContent: any) => {
+    setBlocks(blocks.map(b => b.id === id ? { ...b, content: newContent } : b));
   };
 
-  const moveSection = (fromId: string, toId: string) => {
-    if (fromId === toId) return;
-
-    const next = [...sections];
-    const fromIndex = next.findIndex((item) => item.id === fromId);
-    const toIndex = next.findIndex((item) => item.id === toId);
-
-    if (fromIndex < 0 || toIndex < 0) return;
-
-    const [moved] = next.splice(fromIndex, 1);
-    next.splice(toIndex, 0, moved);
-    setSections(next);
+  const moveBlock = (id: string, direction: 'up' | 'down') => {
+    const index = blocks.findIndex(b => b.id === id);
+    if ((direction === 'up' && index > 0) || (direction === 'down' && index < blocks.length - 1)) {
+      const newBlocks = [...blocks];
+      const swapIndex = direction === 'up' ? index - 1 : index + 1;
+      [newBlocks[index], newBlocks[swapIndex]] = [newBlocks[swapIndex], newBlocks[index]];
+      setBlocks(newBlocks);
+    }
   };
 
-  const exportHtml = () => {
-    const html = sections.map((section) => renderSectionMarkup(section, theme)).join('\n');
-
-    const documentHtml = `<!DOCTYPE html>
+  const exportHTML = () => {
+    const html = `
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Website Maker Export</title>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Website</title>
     <style>
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        font-family: Inter, Arial, sans-serif;
-        background: ${theme.background};
-        color: ${theme.ink};
-      }
-      .section { padding: 86px 22px; }
-      .wrap { max-width: 1160px; margin: 0 auto; }
-      .badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 8px 14px;
-        border-radius: 999px;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        font-size: 11px;
-      }
-      .hero-grid, .feature-grid, .pricing-grid {
-        display: grid;
-        gap: 24px;
-      }
-      .hero-grid {
-        grid-template-columns: 1.2fr 0.8fr;
-        align-items: center;
-      }
-      .feature-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-      }
-      .pricing-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-      }
-      .card, .pricing-card {
-        background: #fff;
-        border: 1px solid #e8ebf3;
-        border-radius: 22px;
-        padding: 24px;
-        box-shadow: 0 16px 34px rgba(15, 23, 42, 0.07);
-      }
-      .price { font-size: 2.2rem; font-weight: 800; }
-      .btn {
-        display: inline-block;
-        padding: 14px 22px;
-        border-radius: 12px;
-        text-decoration: none;
-        font-weight: 700;
-      }
-      .cta-box {
-        border-radius: 28px;
-        padding: 44px 28px;
-        color: #fff;
-      }
-      h1, h2, h3, h4, p { margin: 0; }
-      h1 { font-size: clamp(2.8rem, 5vw, 4.8rem); line-height: 1.05; }
-      h2 { font-size: clamp(2.2rem, 4vw, 3.2rem); }
-      p { color: #525d70; line-height: 1.7; }
-      .muted { color: #59657a; }
-      ul { margin: 18px 0 0; padding-left: 18px; color: #525d70; line-height: 2; }
-      .row { display: flex; gap: 12px; flex-wrap: wrap; }
-      .chip {
-        display: inline-flex;
-        padding: 8px 12px;
-        border-radius: 999px;
-        border: 1px solid #dfe7f2;
-        font-size: 12px;
-        font-weight: 600;
-      }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: ${theme.fontFamily};
+            color: ${theme.textColor};
+            background-color: ${theme.backgroundColor};
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        .hero {
+            background: linear-gradient(135deg, ${theme.primaryColor} 0%, ${theme.secondaryColor} 100%);
+            color: white;
+            padding: 100px 20px;
+            text-align: center;
+        }
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+        .hero p {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background-color: ${theme.accentColor};
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            transition: transform 0.2s;
+        }
+        .btn:hover {
+            transform: scale(1.05);
+        }
+        .features {
+            padding: 80px 20px;
+            background-color: #f9fafb;
+        }
+        .features h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 50px;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+        .feature-card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .feature-card .icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+        .feature-card h3 {
+            margin-bottom: 10px;
+            color: ${theme.primaryColor};
+        }
+        .pricing {
+            padding: 80px 20px;
+        }
+        .pricing h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 50px;
+        }
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+        }
+        .pricing-card {
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+        .pricing-card:hover {
+            transform: translateY(-10px);
+            border-color: ${theme.primaryColor};
+        }
+        .pricing-card .price {
+            font-size: 2.5rem;
+            color: ${theme.primaryColor};
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .pricing-card ul {
+            list-style: none;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .pricing-card li {
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .cta {
+            background: linear-gradient(135deg, ${theme.accentColor} 0%, ${theme.primaryColor} 100%);
+            color: white;
+            padding: 60px 20px;
+            text-align: center;
+        }
+        .cta h2 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+        }
+        .cta p {
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+        }
+        .testimonial {
+            background-color: #f9fafb;
+            padding: 60px 20px;
+            text-align: center;
+        }
+        .testimonial-content {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .testimonial blockquote {
+            font-size: 1.3rem;
+            font-style: italic;
+            margin-bottom: 20px;
+        }
+        .gallery {
+            padding: 80px 20px;
+        }
+        .gallery h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 50px;
+        }
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .gallery-item img {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+        .team {
+            background-color: #f9fafb;
+            padding: 80px 20px;
+        }
+        .team h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 50px;
+        }
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+        }
+        .team-member {
+            text-align: center;
+        }
+        .team-member img {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            margin-bottom: 15px;
+        }
+        .faq {
+            padding: 80px 20px;
+        }
+        .faq h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 50px;
+        }
+        .faq-container {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        .faq-item {
+            margin-bottom: 20px;
+            border: 1px solid #e5e7eb;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .faq-question {
+            background-color: #f9fafb;
+            padding: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            color: ${theme.primaryColor};
+        }
+        .faq-answer {
+            padding: 15px;
+            display: none;
+        }
+        .faq-answer.active {
+            display: block;
+        }
+        footer {
+            background-color: #1f2937;
+            color: white;
+            text-align: center;
+            padding: 30px;
+            margin-top: 50px;
+        }
     </style>
-  </head>
-  <body>
-    ${html}
-  </body>
-</html>`;
+</head>
+<body>
+${blocks.map(block => {
+  switch (block.type) {
+    case 'hero':
+      return `
+        <div class="hero">
+            <div class="container">
+                <h1>${block.content.title}</h1>
+                <p>${block.content.subtitle}</p>
+                <button class="btn">${block.content.buttonText}</button>
+            </div>
+        </div>
+      `;
+    case 'features':
+      return `
+        <div class="features">
+            <div class="container">
+                <h2>${block.content.title}</h2>
+                <div class="features-grid">
+                    ${block.content.items.map((item: any) => `
+                        <div class="feature-card">
+                            <div class="icon">${item.icon}</div>
+                            <h3>${item.title}</h3>
+                            <p>${item.description}</p>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+      `;
+    case 'pricing':
+      return `
+        <div class="pricing">
+            <div class="container">
+                <h2>${block.content.title}</h2>
+                <div class="pricing-grid">
+                    ${block.content.plans.map((plan: any) => `
+                        <div class="pricing-card">
+                            <h3>${plan.name}</h3>
+                            <div class="price">${plan.price}</div>
+                            <ul>
+                                ${plan.features.map((f: string) => `<li>✓ ${f}</li>`).join('')}
+                            </ul>
+                            <button class="btn">Choose Plan</button>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+      `;
+    case 'cta':
+      return `
+        <div class="cta">
+            <div class="container">
+                <h2>${block.content.title}</h2>
+                <p>${block.content.description}</p>
+                <button class="btn">${block.content.buttonText}</button>
+            </div>
+        </div>
+      `;
+    case 'testimonial':
+      return `
+        <div class="testimonial">
+            <div class="testimonial-content">
+                <blockquote>${block.content.quote}</blockquote>
+                <p><strong>${block.content.author}</strong></p>
+                <p>${block.content.position}</p>
+            </div>
+        </div>
+      `;
+    case 'gallery':
+      return `
+        <div class="gallery">
+            <div class="container">
+                <h2>${block.content.title}</h2>
+                <div class="gallery-grid">
+                    ${block.content.images.map((img: any) => `
+                        <div class="gallery-item">
+                            <img src="${img.url}" alt="${img.alt}">
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+      `;
+    case 'team':
+      return `
+        <div class="team">
+            <div class="container">
+                <h2>${block.content.title}</h2>
+                <div class="team-grid">
+                    ${block.content.members.map((member: any) => `
+                        <div class="team-member">
+                            <img src="${member.image}" alt="${member.name}">
+                            <h3>${member.name}</h3>
+                            <p>${member.role}</p>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+      `;
+    case 'faq':
+      return `
+        <div class="faq">
+            <div class="container">
+                <h2>${block.content.title}</h2>
+                <div class="faq-container">
+                    ${block.content.questions.map((item: any, i: number) => `
+                        <div class="faq-item">
+                            <div class="faq-question" onclick="this.nextElementSibling.classList.toggle('active')">Q: ${item.q}</div>
+                            <div class="faq-answer">A: ${item.a}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+      `;
+    default:
+      return '';
+  }
+}).join('')}
+<footer>
+    <p>&copy; 2024 My Website. All rights reserved.</p>
+</footer>
+<script>
+    document.querySelectorAll('.faq-question').forEach(q => {
+        q.addEventListener('click', function() {
+            this.nextElementSibling.classList.toggle('active');
+        });
+    });
+</script>
+</body>
+</html>
+    `;
 
-    const blob = new Blob([documentHtml], { type: 'text/html' });
+    const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'website-maker-export.html';
+    link.download = 'website.html';
     link.click();
-    URL.revokeObjectURL(url);
   };
 
   return (
-    <div className="studio-shell" style={{ background: theme.background, color: theme.ink }}>
-      <aside className="sidebar-panel">
-        <div className="brand-row">
-          <div className="brand-mark">WM</div>
-          <div>
-            <div className="eyebrow">Builder</div>
-            <h1>Website Maker</h1>
+    <div className="app-container">
+      <div className="main-layout">
+        {/* Sidebar */}
+        <div className="sidebar">
+          <div className="sidebar-header">
+            <h1>🚀 WebBuilder</h1>
+            <p>Create Amazing Websites</p>
           </div>
-        </div>
 
-        <div className="panel-heading">Sections</div>
-        <div className="block-list">
-          {(Object.keys(blockLibrary) as SectionType[]).map((type) => (
-            <button key={type} className="block-button" onClick={() => addSection(type)}>
-              + {blockLibrary[type].label}
-            </button>
-          ))}
-        </div>
-
-        <div className="panel-heading">Theme</div>
-        <div className="theme-grid">
-          <label>
-            Primary
-            <input
-              type="color"
-              value={theme.primary}
-              onChange={(event) => setTheme((current) => ({ ...current, primary: event.target.value }))}
-            />
-          </label>
-          <label>
-            Background
-            <input
-              type="color"
-              value={theme.background}
-              onChange={(event) => setTheme((current) => ({ ...current, background: event.target.value }))}
-            />
-          </label>
-        </div>
-      </aside>
-
-      <main className="workspace-panel">
-        <div className="workspace-topbar">
-          <div>
-            <div className="eyebrow muted">Workspace</div>
-            <h2>Landing page editor</h2>
-          </div>
-          <button className="primary-button" onClick={exportHtml}>
-            Export HTML
-          </button>
-        </div>
-
-        <div className="canvas-list">
-          {sections.map((section) => (
-            <div
-              key={section.id}
-              className={`canvas-card ${selectedId === section.id ? 'selected' : ''}`}
-              draggable
-              onDragStart={() => setDraggedId(section.id)}
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={() => {
-                if (draggedId) {
-                  moveSection(draggedId, section.id);
-                  setDraggedId(null);
-                }
-              }}
-              onClick={() => setSelectedId(section.id)}
-            >
-              <div className="canvas-header">
-                <span>{blockLibrary[section.type].label}</span>
-                <span>Drag</span>
-              </div>
-              <PreviewSection section={section} theme={theme} compact />
+          <div className="sidebar-section">
+            <h3>Add Block</h3>
+            <div className="block-buttons">
+              <button onClick={() => addBlock('hero')} className="block-btn">📍 Hero</button>
+              <button onClick={() => addBlock('features')} className="block-btn">⭐ Features</button>
+              <button onClick={() => addBlock('pricing')} className="block-btn">💰 Pricing</button>
+              <button onClick={() => addBlock('testimonial')} className="block-btn">💬 Testimonial</button>
+              <button onClick={() => addBlock('gallery')} className="block-btn">🖼️ Gallery</button>
+              <button onClick={() => addBlock('team')} className="block-btn">👥 Team</button>
+              <button onClick={() => addBlock('faq')} className="block-btn">❓ FAQ</button>
+              <button onClick={() => addBlock('cta')} className="block-btn">🎯 CTA</button>
             </div>
-          ))}
-        </div>
-      </main>
+          </div>
 
-      <aside className="inspector-panel">
-        {selectedSection && (
-          <>
-            <div className="panel-heading inspector-title">Inspector</div>
-            <label>
-              Title
-              <input
-                value={selectedSection.title}
-                onChange={(event) => updateSelected({ title: event.target.value })}
-              />
-            </label>
-            <label>
-              Subtitle
-              <textarea
-                rows={3}
-                value={selectedSection.subtitle}
-                onChange={(event) => updateSelected({ subtitle: event.target.value })}
-              />
-            </label>
-            <label>
-              CTA label
-              <input
-                value={selectedSection.ctaText}
-                onChange={(event) => updateSelected({ ctaText: event.target.value })}
-              />
-            </label>
-            <div className="inspector-actions">
-              <button className="secondary-button" onClick={removeSelected}>
-                Remove
+          <div className="sidebar-section">
+            <h3>Theme</h3>
+            <div className="theme-controls">
+              <label>
+                Primary Color:
+                <input
+                  type="color"
+                  value={theme.primaryColor}
+                  onChange={(e) => setTheme({ ...theme, primaryColor: e.target.value })}
+                />
+              </label>
+              <label>
+                Accent Color:
+                <input
+                  type="color"
+                  value={theme.accentColor}
+                  onChange={(e) => setTheme({ ...theme, accentColor: e.target.value })}
+                />
+              </label>
+              <label>
+                Background:
+                <input
+                  type="color"
+                  value={theme.backgroundColor}
+                  onChange={(e) => setTheme({ ...theme, backgroundColor: e.target.value })}
+                />
+              </label>
+              <label>
+                Text Color:
+                <input
+                  type="color"
+                  value={theme.textColor}
+                  onChange={(e) => setTheme({ ...theme, textColor: e.target.value })}
+                />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Editor */}
+        <div className="editor">
+          <div className="editor-header">
+            <h2>Page Editor</h2>
+            <div className="editor-actions">
+              <button onClick={() => setShowPreview(!showPreview)} className="btn-primary">
+                {showPreview ? '👁️ Hide Preview' : '👁️ Preview'}
               </button>
-              <button
-                className="secondary-button"
-                onClick={() => updateSelected({ accent: blockLibrary[selectedSection.type].accent })}
+              <button onClick={exportHTML} className="btn-success">📥 Export HTML</button>
+            </div>
+          </div>
+
+          <div className="blocks-list">
+            {blocks.map((block, index) => (
+              <div
+                key={block.id}
+                className={`block-item ${selectedBlockId === block.id ? 'selected' : ''}`}
+                onClick={() => setSelectedBlockId(block.id)}
               >
-                Reset accent
-              </button>
-            </div>
-          </>
-        )}
-      </aside>
-
-      <div className="preview-panel">
-        <div className="device-shell">
-          <div className="device-header">
-            <span className="traffic red" />
-            <span className="traffic yellow" />
-            <span className="traffic green" />
-          </div>
-          <div className="preview-content">
-            {sections.map((section) => (
-              <PreviewSection key={section.id} section={section} theme={theme} />
+                <div className="block-item-header">
+                  <span className="block-type">{block.type.toUpperCase()}</span>
+                  <div className="block-actions">
+                    {index > 0 && (
+                      <button onClick={() => moveBlock(block.id, 'up')} title="Move up">⬆️</button>
+                    )}
+                    {index < blocks.length - 1 && (
+                      <button onClick={() => moveBlock(block.id, 'down')} title="Move down">⬇️</button>
+                    )}
+                    <button onClick={() => deleteBlock(block.id)} title="Delete">🗑️</button>
+                  </div>
+                </div>
+                <div className="block-preview">
+                  {block.type === 'hero' && (
+                    <div style={{ color: theme.textColor }}>
+                      <h4>{block.content.title}</h4>
+                      <p>{block.content.subtitle}</p>
+                    </div>
+                  )}
+                  {block.type === 'features' && (
+                    <div style={{ color: theme.textColor }}>
+                      <h4>{block.content.title}</h4>
+                      <p>{block.content.items.length} features</p>
+                    </div>
+                  )}
+                  {block.type === 'pricing' && (
+                    <div style={{ color: theme.textColor }}>
+                      <h4>{block.content.title}</h4>
+                      <p>{block.content.plans.length} plans</p>
+                    </div>
+                  )}
+                  {block.type !== 'hero' && block.type !== 'features' && block.type !== 'pricing' && (
+                    <div style={{ color: theme.textColor }}>
+                      <p>{block.type}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             ))}
           </div>
         </div>
+
+        {/* Inspector */}
+        <div className="inspector">
+          <div className="inspector-header">
+            <h3>Inspector</h3>
+          </div>
+          {selectedBlock && (
+            <div className="inspector-content">
+              {selectedBlock.type === 'hero' && (
+                <>
+                  <label>
+                    Title:
+                    <input
+                      value={selectedBlock.content.title}
+                      onChange={(e) => updateBlockContent(selectedBlock.id, { ...selectedBlock.content, title: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Subtitle:
+                    <input
+                      value={selectedBlock.content.subtitle}
+                      onChange={(e) => updateBlockContent(selectedBlock.id, { ...selectedBlock.content, subtitle: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Button Text:
+                    <input
+                      value={selectedBlock.content.buttonText}
+                      onChange={(e) => updateBlockContent(selectedBlock.id, { ...selectedBlock.content, buttonText: e.target.value })}
+                    />
+                  </label>
+                </>
+              )}
+              {selectedBlock.type === 'features' && (
+                <>
+                  <label>
+                    Title:
+                    <input
+                      value={selectedBlock.content.title}
+                      onChange={(e) => updateBlockContent(selectedBlock.id, { ...selectedBlock.content, title: e.target.value })}
+                    />
+                  </label>
+                  <p>Features: {selectedBlock.content.items.length} items</p>
+                </>
+              )}
+              {selectedBlock.type === 'pricing' && (
+                <>
+                  <label>
+                    Title:
+                    <input
+                      value={selectedBlock.content.title}
+                      onChange={(e) => updateBlockContent(selectedBlock.id, { ...selectedBlock.content, title: e.target.value })}
+                    />
+                  </label>
+                  <p>Plans: {selectedBlock.content.plans.length} items</p>
+                </>
+              )}
+              {selectedBlock.type === 'cta' && (
+                <>
+                  <label>
+                    Title:
+                    <input
+                      value={selectedBlock.content.title}
+                      onChange={(e) => updateBlockContent(selectedBlock.id, { ...selectedBlock.content, title: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Description:
+                    <input
+                      value={selectedBlock.content.description}
+                      onChange={(e) => updateBlockContent(selectedBlock.id, { ...selectedBlock.content, description: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Button Text:
+                    <input
+                      value={selectedBlock.content.buttonText}
+                      onChange={(e) => updateBlockContent(selectedBlock.id, { ...selectedBlock.content, buttonText: e.target.value })}
+                    />
+                  </label>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Preview Modal */}
+      {showPreview && (
+        <div className="preview-modal">
+          <div className="preview-container">
+            <button className="close-preview" onClick={() => setShowPreview(false)}>✕</button>
+            <div className="preview-content" ref={previewRef} style={{ backgroundColor: theme.backgroundColor, color: theme.textColor, fontFamily: theme.fontFamily }}>
+              {blocks.map(block => (
+                <BlockRenderer key={block.id} block={block} theme={theme} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function PreviewSection({ section, theme, compact = false }: { section: SectionItem; theme: Theme; compact?: boolean }) {
-  const isHero = section.type === 'hero';
-  const isFeatures = section.type === 'features';
-  const isMetrics = section.type === 'metrics';
-  const isShowcase = section.type === 'showcase';
-  const isPricing = section.type === 'pricing';
-  const isTestimonial = section.type === 'testimonial';
-  const isCta = section.type === 'cta';
-
-  return (
-    <section className={compact ? 'mini-section' : 'live-section'} style={{ background: compact ? '#fff' : theme.panel }}>
-      {isHero && (
-        <div className="hero-grid">
-          <div>
-            <span className="badge" style={{ background: `${section.accent}1f`, color: section.accent }}>
-              {section.eyebrow}
-            </span>
-            <h3>{section.title}</h3>
-            <p>{section.subtitle}</p>
-            <div className="button-row">
-              <button className="solid-button" style={{ background: section.accent }}>
-                {section.ctaText}
-              </button>
-              <button className="ghost-button">See preview</button>
-            </div>
-            <div className="chip-row">
-              {section.body.map((item) => (
-                <span key={item} className="chip" style={{ borderColor: `${section.accent}55`, color: section.accent }}>
-                  {item}
-                </span>
+function BlockRenderer({ block, theme }: { block: Block; theme: Theme }) {
+  switch (block.type) {
+    case 'hero':
+      return (
+        <div style={{
+          background: `linear-gradient(135deg, ${theme.primaryColor} 0%, ${theme.secondaryColor} 100%)`,
+          color: 'white',
+          padding: '100px 20px',
+          textAlign: 'center',
+        }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            <h1 style={{ fontSize: '3rem', marginBottom: '20px' }}>{block.content.title}</h1>
+            <p style={{ fontSize: '1.2rem', marginBottom: '30px' }}>{block.content.subtitle}</p>
+            <button style={{
+              padding: '12px 30px',
+              backgroundColor: theme.accentColor,
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px',
+              fontSize: '1rem',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+            }}>{block.content.buttonText}</button>
+          </div>
+        </div>
+      );
+    case 'features':
+      return (
+        <div style={{ padding: '80px 20px', backgroundColor: '#f9fafb' }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            <h2 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '50px', color: theme.textColor }}>{block.content.title}</h2>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gap: '30px',
+            }}>
+              {block.content.items.map((item: any, i: number) => (
+                <div key={i} style={{
+                  background: 'white',
+                  padding: '30px',
+                  borderRadius: '10px',
+                  textAlign: 'center',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                }}>
+                  <div style={{ fontSize: '3rem', marginBottom: '15px' }}>{item.icon}</div>
+                  <h3 style={{ marginBottom: '10px', color: theme.primaryColor }}>{item.title}</h3>
+                  <p style={{ color: theme.textColor }}>{item.description}</p>
+                </div>
               ))}
             </div>
           </div>
-
-          <div className="hero-visual" style={{ background: `linear-gradient(135deg, ${section.accent}, #0f172a)` }}>
-            <div className="mock-window">
-              <div className="mock-top" />
-              <div className="mock-lines">
-                <span />
-                <span />
-                <span />
-              </div>
-            </div>
-          </div>
         </div>
-      )}
-
-      {isFeatures && (
-        <div>
-          <div className="section-header">
-            <span className="badge" style={{ background: `${section.accent}1f`, color: section.accent }}>
-              {section.eyebrow}
-            </span>
-            <h3>{section.title}</h3>
-            <p>{section.subtitle}</p>
-          </div>
-          <div className="feature-grid">
-            {section.body.map((item) => (
-              <div key={item} className="feature-card">
-                <div className="icon-box" style={{ background: `${section.accent}1f`, color: section.accent }}>
-                  ✦
-                </div>
-                <h4>{item}</h4>
-                <p>Purpose-built moments that feel refined, flexible, and conversion-ready.</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {isMetrics && (
-        <div>
-          <div className="section-header">
-            <span className="badge" style={{ background: `${section.accent}1f`, color: section.accent }}>
-              {section.eyebrow}
-            </span>
-            <h3>{section.title}</h3>
-            <p>{section.subtitle}</p>
-          </div>
-          <div className="stats-grid">
-            {section.body.map((item, index) => (
-              <div key={item} className="stat-card" style={{ borderTop: `4px solid ${section.accent}` }}>
-                <strong>{['4.9', '2x', '18k+'][index]}</strong>
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {isShowcase && (
-        <div>
-          <div className="section-header">
-            <span className="badge" style={{ background: `${section.accent}1f`, color: section.accent }}>
-              {section.eyebrow}
-            </span>
-            <h3>{section.title}</h3>
-            <p>{section.subtitle}</p>
-          </div>
-          <div className="showcase-grid">
-            {section.body.map((item, index) => (
-              <div key={item} className="showcase-card" style={{ background: index % 2 === 0 ? '#f8fafc' : '#eef2ff' }}>
-                <div className="showcase-preview" style={{ background: `linear-gradient(135deg, ${section.accent}, #111827)` }} />
-                <div>
-                  <strong>{item}</strong>
-                  <p>Premium positioning with storytelling, proof, and setup clarity.</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {isPricing && (
-        <div>
-          <div className="section-header">
-            <span className="badge" style={{ background: `${section.accent}1f`, color: section.accent }}>
-              {section.eyebrow}
-            </span>
-            <h3>{section.title}</h3>
-            <p>{section.subtitle}</p>
-          </div>
-          <div className="pricing-grid">
-            {section.body.map((item, index) => (
-              <div key={item} className={`price-card ${index === 1 ? 'featured' : ''}`} style={{ borderColor: index === 1 ? section.accent : '#e5e7eb' }}>
-                <h4>{item}</h4>
-                <div className="price-line">
-                  <span className="price">${index === 0 ? 19 : index === 1 ? 39 : 89}</span>
-                  <span className="month">/mo</span>
-                </div>
-                <ul>
-                  <li>Custom sections</li>
-                  <li>Brand-ready presets</li>
-                  <li>Fast exports</li>
-                </ul>
-                <button className="solid-button" style={{ background: section.accent }}>
-                  {section.ctaText}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {isTestimonial && (
-        <div>
-          <div className="quote-box" style={{ borderLeft: `5px solid ${section.accent}` }}>
-            <p>“{section.body[0]}”</p>
-            <div className="person-meta">
-              <strong>Alicia James</strong>
-              <span>Founder • Northstar Studio</span>
-            </div>
-          </div>
-          <div className="section-header">
-            <span className="badge" style={{ background: `${section.accent}1f`, color: section.accent }}>
-              {section.eyebrow}
-            </span>
-            <h3>{section.title}</h3>
-            <p>{section.subtitle}</p>
-          </div>
-        </div>
-      )}
-
-      {isCta && (
-        <div className="cta-box" style={{ background: `linear-gradient(135deg, ${section.accent}, #0f172a)` }}>
-          <h3>{section.title}</h3>
-          <p>{section.subtitle}</p>
-          <button className="cta-button">{section.ctaText}</button>
-        </div>
-      )}
-    </section>
-  );
-}
-
-function renderSectionMarkup(section: SectionItem, theme: Theme) {
-  const accent = section.accent;
-
-  switch (section.type) {
-    case 'hero':
-      return `
-        <section class="section" style="background:${theme.panel};">
-          <div class="wrap hero-grid">
-            <div>
-              <div class="badge" style="background:${accent}1f;color:${accent};">${section.eyebrow}</div>
-              <h1 style="margin:18px 0 14px;">${section.title}</h1>
-              <p style="max-width:560px;">${section.subtitle}</p>
-              <div class="row" style="margin-top:22px;">
-                <a href="#" class="btn" style="background:${accent};color:#fff;">${section.ctaText}</a>
-                <a href="#" class="btn" style="background:transparent;color:${theme.ink};border:1px solid #dfe7f2;">See preview</a>
-              </div>
-              <div class="row" style="margin-top:22px;">
-                ${section.body
-                  .map(
-                    (item) => `<span class="chip" style="border-color:${accent}55;color:${accent};">${item}</span>`,
-                  )
-                  .join('')}
-              </div>
-            </div>
-            <div class="card" style="padding:0; overflow:hidden; min-height:340px; background:linear-gradient(135deg, ${accent}, #0f172a); border:none;">
-              <div style="padding:22px; height:100%;">
-                <div style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); border-radius:18px; padding:20px; height:100%; min-height:300px; display:flex; align-items:flex-end;">
-                  <div style="width:100%;">
-                    <div style="height:12px;width:130px;border-radius:999px;background:rgba(255,255,255,.8);margin-bottom:12px;"></div>
-                    <div style="height:12px;width:92%;border-radius:999px;background:rgba(255,255,255,.3);margin-bottom:10px;"></div>
-                    <div style="height:12px;width:82%;border-radius:999px;background:rgba(255,255,255,.3);"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      `;
-    case 'features':
-      return `
-        <section class="section" style="background:${theme.background};">
-          <div class="wrap">
-            <div style="text-align:center;max-width:720px;margin:0 auto 28px;">
-              <div class="badge" style="background:${accent}1f;color:${accent};">${section.eyebrow}</div>
-              <h2 style="margin:16px 0 10px;">${section.title}</h2>
-              <p>${section.subtitle}</p>
-            </div>
-            <div class="feature-grid">
-              ${section.body
-                .map(
-                  (item) => `
-                    <div class="card">
-                      <div class="icon-box" style="width:46px;height:46px;border-radius:14px;background:${accent}1f;color:${accent};display:grid;place-items:center;font-weight:800; margin-bottom:18px;">✦</div>
-                      <h3>${item}</h3>
-                      <p style="margin-top:8px;">Purpose-built moments that feel refined, flexible, and conversion-ready.</p>
-                    </div>
-                  `,
-                )
-                .join('')}
-            </div>
-          </div>
-        </section>
-      `;
-    case 'metrics':
-      return `
-        <section class="section" style="background:${theme.panel};">
-          <div class="wrap">
-            <div style="text-align:center;max-width:760px;margin:0 auto 30px;">
-              <div class="badge" style="background:${accent}1f;color:${accent};">${section.eyebrow}</div>
-              <h2 style="margin:16px 0 10px;">${section.title}</h2>
-              <p>${section.subtitle}</p>
-            </div>
-            <div class="feature-grid">
-              ${section.body
-                .map(
-                  (item, index) => `
-                    <div class="card" style="padding:26px; border-top:4px solid ${accent};">
-                      <strong style="display:block;font-size:2.2rem; margin-bottom:10px;">${['4.9', '2x', '18k+'][index]}</strong>
-                      <span style="font-weight:600;">${item}</span>
-                    </div>
-                  `,
-                )
-                .join('')}
-            </div>
-          </div>
-        </section>
-      `;
-    case 'showcase':
-      return `
-        <section class="section" style="background:${theme.background};">
-          <div class="wrap">
-            <div style="text-align:center;max-width:760px;margin:0 auto 30px;">
-              <div class="badge" style="background:${accent}1f;color:${accent};">${section.eyebrow}</div>
-              <h2 style="margin:16px 0 10px;">${section.title}</h2>
-              <p>${section.subtitle}</p>
-            </div>
-            <div class="feature-grid">
-              ${section.body
-                .map(
-                  (item, index) => `
-                    <div class="card" style="padding:0; overflow:hidden; background:${index % 2 === 0 ? '#f8fafc' : '#eef2ff'};">
-                      <div style="height:180px;background:linear-gradient(135deg, ${accent}, #111827);"></div>
-                      <div style="padding:20px;">
-                        <strong>${item}</strong>
-                        <p style="margin-top:8px;">Premium positioning with storytelling, proof, and setup clarity.</p>
-                      </div>
-                    </div>
-                  `,
-                )
-                .join('')}
-            </div>
-          </div>
-        </section>
-      `;
+      );
     case 'pricing':
-      return `
-        <section class="section" style="background:${theme.panel};">
-          <div class="wrap">
-            <div style="text-align:center;max-width:760px;margin:0 auto 30px;">
-              <div class="badge" style="background:${accent}1f;color:${accent};">${section.eyebrow}</div>
-              <h2 style="margin:16px 0 10px;">${section.title}</h2>
-              <p>${section.subtitle}</p>
-            </div>
-            <div class="pricing-grid">
-              ${section.body
-                .map(
-                  (item, index) => `
-                    <div class="pricing-card" style="border:1px solid ${index === 1 ? accent : '#e8ebf3'}; ${index === 1 ? 'transform: translateY(-6px);' : ''}">
-                      <h3>${item}</h3>
-                      <div style="display:flex;align-items:flex-end;gap:8px; margin:20px 0;">
-                        <span class="price">${index === 0 ? '$19' : index === 1 ? '$39' : '$89'}</span>
-                        <span class="muted">/mo</span>
-                      </div>
-                      <ul>
-                        <li>Custom sections</li>
-                        <li>Brand-ready presets</li>
-                        <li>Fast exports</li>
-                      </ul>
-                      <a href="#" class="btn" style="margin-top:16px;display:inline-block;background:${accent};color:#fff;">${section.ctaText}</a>
-                    </div>
-                  `,
-                )
-                .join('')}
+      return (
+        <div style={{ padding: '80px 20px' }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            <h2 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '50px', color: theme.textColor }}>{block.content.title}</h2>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '30px',
+            }}>
+              {block.content.plans.map((plan: any, i: number) => (
+                <div key={i} style={{
+                  border: `2px solid #e5e7eb`,
+                  borderRadius: '10px',
+                  padding: '30px',
+                  textAlign: 'center',
+                }}>
+                  <h3 style={{ color: theme.textColor }}>{plan.name}</h3>
+                  <div style={{ fontSize: '2.5rem', color: theme.primaryColor, margin: '20px 0', fontWeight: 'bold' }}>{plan.price}</div>
+                  <ul style={{ listStyle: 'none', margin: '20px 0', textAlign: 'left' }}>
+                    {plan.features.map((f: string, fi: number) => (
+                      <li key={fi} style={{ padding: '10px 0', borderBottom: '1px solid #e5e7eb' }}>✓ {f}</li>
+                    ))}
+                  </ul>
+                  <button style={{
+                    padding: '12px 30px',
+                    backgroundColor: theme.primaryColor,
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '5px',
+                    cursor: 'pointer',
+                  }}>Choose</button>
+                </div>
+              ))}
             </div>
           </div>
-        </section>
-      `;
+        </div>
+      );
     case 'testimonial':
-      return `
-        <section class="section" style="background:${theme.background};">
-          <div class="wrap">
-            <div class="card" style="border-left:5px solid ${accent}; padding:34px;">
-              <p style="font-size:1.7rem; line-height:1.5; color:${theme.ink};">“${section.body[0]}”</p>
-              <div style="margin-top:18px; color:${theme.muted};">
-                <strong style="display:block; color:${theme.ink};">Alicia James</strong>
-                Founder • Northstar Studio
-              </div>
+      return (
+        <div style={{ backgroundColor: '#f9fafb', padding: '60px 20px', textAlign: 'center' }}>
+          <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+            <blockquote style={{ fontSize: '1.3rem', fontStyle: 'italic', marginBottom: '20px', color: theme.textColor }}>
+              "{block.content.quote}"
+            </blockquote>
+            <p style={{ color: theme.textColor }}><strong>{block.content.author}</strong></p>
+            <p style={{ color: theme.textColor }}>{block.content.position}</p>
+          </div>
+        </div>
+      );
+    case 'gallery':
+      return (
+        <div style={{ padding: '80px 20px' }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            <h2 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '50px', color: theme.textColor }}>{block.content.title}</h2>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gap: '20px',
+            }}>
+              {block.content.images.map((img: any, i: number) => (
+                <div key={i}>
+                  <img src={img.url} alt={img.alt} style={{ width: '100%', height: '300px', objectFit: 'cover', borderRadius: '10px' }} />
+                </div>
+              ))}
             </div>
           </div>
-        </section>
-      `;
+        </div>
+      );
+    case 'team':
+      return (
+        <div style={{ backgroundColor: '#f9fafb', padding: '80px 20px' }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            <h2 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '50px', color: theme.textColor }}>{block.content.title}</h2>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+              gap: '30px',
+            }}>
+              {block.content.members.map((member: any, i: number) => (
+                <div key={i} style={{ textAlign: 'center' }}>
+                  <img src={member.image} alt={member.name} style={{ width: '150px', height: '150px', borderRadius: '50%', marginBottom: '15px' }} />
+                  <h3 style={{ color: theme.textColor }}>{member.name}</h3>
+                  <p style={{ color: theme.textColor }}>{member.role}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    case 'faq':
+      const [openIndex, setOpenIndex] = React.useState<number | null>(null);
+      return (
+        <div style={{ padding: '80px 20px' }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            <h2 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '50px', color: theme.textColor }}>{block.content.title}</h2>
+            <div style={{ maxWidth: '700px', margin: '0 auto' }}>
+              {block.content.questions.map((item: any, i: number) => (
+                <div key={i} style={{ marginBottom: '20px', border: '1px solid #e5e7eb', borderRadius: '5px', overflow: 'hidden' }}>
+                  <div
+                    onClick={() => setOpenIndex(openIndex === i ? null : i)}
+                    style={{
+                      backgroundColor: '#f9fafb',
+                      padding: '15px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      color: theme.primaryColor,
+                    }}
+                  >
+                    Q: {item.q}
+                  </div>
+                  {openIndex === i && (
+                    <div style={{ padding: '15px', color: theme.textColor }}>
+                      A: {item.a}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
     case 'cta':
-      return `
-        <section class="section" style="background:${theme.background};">
-          <div class="wrap">
-            <div class="cta-box" style="background:linear-gradient(135deg, ${accent}, #0f172a);">
-              <h2 style="margin:0 0 10px;">${section.title}</h2>
-              <p style="max-width:640px; margin:0 auto 18px; opacity:0.9; color:#fff;">${section.subtitle}</p>
-              <a href="#" class="btn" style="background:#fff;color:${theme.ink};">${section.ctaText}</a>
-            </div>
+      return (
+        <div style={{
+          background: `linear-gradient(135deg, ${theme.accentColor} 0%, ${theme.primaryColor} 100%)`,
+          color: 'white',
+          padding: '60px 20px',
+          textAlign: 'center',
+        }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            <h2 style={{ fontSize: '2rem', marginBottom: '20px' }}>{block.content.title}</h2>
+            <p style={{ fontSize: '1.1rem', marginBottom: '30px' }}>{block.content.description}</p>
+            <button style={{
+              padding: '12px 30px',
+              backgroundColor: 'white',
+              color: theme.primaryColor,
+              border: 'none',
+              borderRadius: '5px',
+              fontSize: '1rem',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+            }}>{block.content.buttonText}</button>
           </div>
-        </section>
-      `;
+        </div>
+      );
     default:
-      return '';
+      return null;
   }
 }
 
