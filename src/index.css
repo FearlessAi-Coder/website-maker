@@ -1,0 +1,548 @@
+import { useMemo, useState } from 'react';
+
+type SectionType = 'hero' | 'features' | 'pricing' | 'testimonial' | 'cta';
+
+type SectionItem = {
+  id: string;
+  type: SectionType;
+  title: string;
+  subtitle: string;
+  ctaText: string;
+  accent: string;
+  body: string[];
+};
+
+type Theme = {
+  primary: string;
+  background: string;
+  panel: string;
+  ink: string;
+  muted: string;
+};
+
+const library: Record<SectionType, { label: string; defaultTitle: string; subtitle: string; ctaText: string; accent: string; body: string[] }> = {
+  hero: {
+    label: 'Hero',
+    defaultTitle: 'Build your next big idea',
+    subtitle: 'Launch fast with a modern website that looks premium and converts visitors.',
+    ctaText: 'Start now',
+    accent: '#5b5cf8',
+    body: ['Fast setup', 'Modern layouts', 'All-in-one builder'],
+  },
+  features: {
+    label: 'Features',
+    defaultTitle: 'Everything you need in one place',
+    subtitle: 'Simple tools for growing teams and creators who want standout results.',
+    ctaText: 'Explore features',
+    accent: '#22c55e',
+    body: ['Custom blocks', 'Responsive design', 'Smart publishing'],
+  },
+  pricing: {
+    label: 'Pricing',
+    defaultTitle: 'Simple pricing that scales with you',
+    subtitle: 'Unlock your website-building workflow without hidden complexity.',
+    ctaText: 'Choose plan',
+    accent: '#f59e0b',
+    body: ['Starter', 'Growth', 'Scale'],
+  },
+  testimonial: {
+    label: 'Testimonial',
+    defaultTitle: 'Loved by creators, agencies, and founders',
+    subtitle: 'Our workflow gives teams a faster path from concept to launch.',
+    ctaText: 'Read stories',
+    accent: '#ec4899',
+    body: ['"From idea to live site in a day."'],
+  },
+  cta: {
+    label: 'Call To Action',
+    defaultTitle: 'Ready to launch your next website?',
+    subtitle: 'Bring your ideas to life with a branded experience your audience will remember.',
+    ctaText: 'Book a demo',
+    accent: '#06b6d4',
+    body: ['No-code power', 'Full control', 'Go live quickly'],
+  },
+};
+
+const initialSections: SectionItem[] = [
+  {
+    id: 's1',
+    type: 'hero',
+    title: 'Build your next big idea',
+    subtitle: 'Launch fast with a modern website that looks premium and converts visitors.',
+    ctaText: 'Start now',
+    accent: '#5b5cf8',
+    body: ['Fast setup', 'Modern layouts', 'All-in-one builder'],
+  },
+  {
+    id: 's2',
+    type: 'features',
+    title: 'Everything you need in one place',
+    subtitle: 'Simple tools for growing teams and creators who want standout results.',
+    ctaText: 'Explore features',
+    accent: '#22c55e',
+    body: ['Custom blocks', 'Responsive design', 'Smart publishing'],
+  },
+  {
+    id: 's3',
+    type: 'pricing',
+    title: 'Simple pricing that scales with you',
+    subtitle: 'Unlock your website-building workflow without hidden complexity.',
+    ctaText: 'Choose plan',
+    accent: '#f59e0b',
+    body: ['Starter', 'Growth', 'Scale'],
+  },
+];
+
+const defaultTheme: Theme = {
+  primary: '#5b5cf8',
+  background: '#f5f7ff',
+  panel: '#ffffff',
+  ink: '#0f172a',
+  muted: '#475569',
+};
+
+function App() {
+  const [sections, setSections] = useState<SectionItem[]>(initialSections);
+  const [selectedId, setSelectedId] = useState<string>(initialSections[0].id);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [theme, setTheme] = useState<Theme>(defaultTheme);
+
+  const selectedSection = useMemo(
+    () => sections.find((section) => section.id === selectedId) ?? sections[0],
+    [sections, selectedId],
+  );
+
+  const addSection = (type: SectionType) => {
+    const preset = library[type];
+    const newSection: SectionItem = {
+      id: crypto.randomUUID(),
+      type,
+      title: preset.defaultTitle,
+      subtitle: preset.subtitle,
+      ctaText: preset.ctaText,
+      accent: preset.accent,
+      body: preset.body,
+    };
+
+    setSections((current) => [...current, newSection]);
+    setSelectedId(newSection.id);
+  };
+
+  const updateSelected = (changes: Partial<SectionItem>) => {
+    if (!selectedSection) return;
+
+    setSections((current) =>
+      current.map((section) =>
+        section.id === selectedSection.id ? { ...section, ...changes } : section,
+      ),
+    );
+  };
+
+  const removeSelected = () => {
+    if (!selectedSection || sections.length === 1) return;
+
+    const nextSections = sections.filter((section) => section.id !== selectedSection.id);
+    setSections(nextSections);
+    setSelectedId(nextSections[0].id);
+  };
+
+  const moveSection = (fromId: string, toId: string) => {
+    if (fromId === toId) return;
+
+    const next = [...sections];
+    const fromIndex = next.findIndex((item) => item.id === fromId);
+    const toIndex = next.findIndex((item) => item.id === toId);
+
+    if (fromIndex < 0 || toIndex < 0) return;
+
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    setSections(next);
+  };
+
+  const exportHtml = () => {
+    const html = sections
+      .map((section) => renderSectionMarkup(section, theme))
+      .join('\n');
+
+    const blob = new Blob([`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{margin:0;font-family:Inter,Arial,sans-serif;background:${theme.background};color:${theme.ink}}*{box-sizing:border-box}.section{padding:72px 24px}.wrap{max-width:1100px;margin:0 auto}.hero{display:grid;grid-template-columns:1.2fr .8fr;gap:32px;align-items:center}.badge{display:inline-block;padding:8px 14px;border-radius:999px;background:${theme.primary}22;color:${theme.primary};font-weight:700}.btn{display:inline-block;padding:14px 22px;border-radius:12px;background:${theme.primary};color:white;text-decoration:none;font-weight:700}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}.card{background:white;border:1px solid #e2e8f0;border-radius:18px;padding:24px;box-shadow:0 14px 30px rgba(15,23,42,0.06)}.pricing-card{background:linear-gradient(135deg,#fff,#f8fafc);border:1px solid #e2e8f0;padding:28px;border-radius:18px}.cta{padding:52px 28px;background:${theme.primary};color:white;border-radius:28px}</style></head><body>${html}</body></html>`], { type: 'text/html' });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'website-maker-export.html';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="app-shell" style={{ background: theme.background, color: theme.ink }}>
+      <aside className="sidebar">
+        <div className="brand-wrap">
+          <div className="logo">WM</div>
+          <div>
+            <p className="eyebrow">Builder</p>
+            <h1>Website Maker</h1>
+          </div>
+        </div>
+
+        <div className="section-label">Block Library</div>
+        <div className="block-list">
+          {(Object.keys(library) as SectionType[]).map((type) => (
+            <button key={type} className="block-btn" onClick={() => addSection(type)}>
+              + {library[type].label}
+            </button>
+          ))}
+        </div>
+
+        <div className="section-label">Brand</div>
+        <div className="theme-group">
+          <label>
+            Primary
+            <input
+              type="color"
+              value={theme.primary}
+              onChange={(event) => setTheme((current) => ({ ...current, primary: event.target.value }))}
+            />
+          </label>
+          <label>
+            Background
+            <input
+              type="color"
+              value={theme.background}
+              onChange={(event) => setTheme((current) => ({ ...current, background: event.target.value }))}
+            />
+          </label>
+        </div>
+      </aside>
+
+      <main className="builder-panel">
+        <div className="topbar">
+          <div>
+            <p className="eyebrow">Workspace</p>
+            <h2>Landing page editor</h2>
+          </div>
+          <button className="primary-btn" onClick={exportHtml}>Export HTML</button>
+        </div>
+
+        <div className="canvas-area">
+          {sections.map((section) => (
+            <div
+              key={section.id}
+              className={`canvas-card ${selectedId === section.id ? 'selected' : ''}`}
+              draggable
+              onDragStart={() => setDraggedId(section.id)}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={() => {
+                if (draggedId) {
+                  moveSection(draggedId, section.id);
+                  setDraggedId(null);
+                }
+              }}
+              onClick={() => setSelectedId(section.id)}
+            >
+              <div className="card-header">
+                <span>{library[section.type].label}</span>
+                <span>Drag</span>
+              </div>
+              <PreviewSection section={section} theme={theme} compact />
+            </div>
+          ))}
+        </div>
+      </main>
+
+      <aside className="inspector-panel">
+        {selectedSection ? (
+          <>
+            <div className="inspector-title">Inspector</div>
+            <label>
+              Title
+              <input
+                value={selectedSection.title}
+                onChange={(event) => updateSelected({ title: event.target.value })}
+              />
+            </label>
+            <label>
+              Subtitle
+              <textarea
+                rows={3}
+                value={selectedSection.subtitle}
+                onChange={(event) => updateSelected({ subtitle: event.target.value })}
+              />
+            </label>
+            <label>
+              CTA label
+              <input
+                value={selectedSection.ctaText}
+                onChange={(event) => updateSelected({ ctaText: event.target.value })}
+              />
+            </label>
+            <div className="actions-row">
+              <button className="ghost-btn" onClick={removeSelected}>Remove</button>
+              <button
+                className="ghost-btn"
+                onClick={() => updateSelected({ accent: library[selectedSection.type].accent })}
+              >
+                Reset accent
+              </button>
+            </div>
+          </>
+        ) : null}
+      </aside>
+
+      <div className="preview-panel">
+        <div className="preview-frame">
+          <div className="preview-header">
+            <span className="dot red" />
+            <span className="dot amber" />
+            <span className="dot green" />
+          </div>
+          {sections.map((section) => (
+            <PreviewSection key={section.id} section={section} theme={theme} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PreviewSection({ section, theme, compact = false }: { section: SectionItem; theme: Theme; compact?: boolean }) {
+  const isHero = section.type === 'hero';
+  const isFeatures = section.type === 'features';
+  const isPricing = section.type === 'pricing';
+  const isTestimonial = section.type === 'testimonial';
+  const isCTA = section.type === 'cta';
+
+  return (
+    <section
+      className={compact ? 'mini-section' : 'preview-section'}
+      style={{ background: compact ? '#ffffff' : theme.panel, borderColor: '#e2e8f0' }}
+    >
+      {isHero && (
+        <div className="preview-layout hero-layout">
+          <div>
+            <span className="badge" style={{ background: `${section.accent}22`, color: section.accent }}>New</span>
+            <h3>{section.title}</h3>
+            <p>{section.subtitle}</p>
+            <div className="cta-row">
+              <button className="solid-btn" style={{ background: section.accent }}>
+                {section.ctaText}
+              </button>
+              <button className="outline-btn">Watch demo</button>
+            </div>
+            <div className="chip-row">
+              {section.body.map((item) => (
+                <span key={item} className="chip" style={{ borderColor: `${section.accent}44`, color: section.accent }}>
+                  {item}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="hero-visual" style={{ background: `linear-gradient(135deg, ${section.accent} 0%, #111827 100%)` }}>
+            <div className="mock-window">
+              <div className="mock-bar" />
+              <div className="mock-content">
+                <span />
+                <span />
+                <span />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isFeatures && (
+        <div className="feature-wrap">
+          <div className="section-heading">
+            <span className="badge" style={{ background: `${section.accent}22`, color: section.accent }}>Features</span>
+            <h3>{section.title}</h3>
+            <p>{section.subtitle}</p>
+          </div>
+          <div className="feature-grid">
+            {section.body.map((item) => (
+              <div key={item} className="feature-card">
+                <div className="feature-icon" style={{ background: `${section.accent}22`, color: section.accent }}>
+                  ✦
+                </div>
+                <h4>{item}</h4>
+                <p>Flexible building blocks tailored for modern teams and launch-ready campaigns.</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {isPricing && (
+        <div className="pricing-wrap">
+          <div className="section-heading">
+            <span className="badge" style={{ background: `${section.accent}22`, color: section.accent }}>Plans</span>
+            <h3>{section.title}</h3>
+            <p>{section.subtitle}</p>
+          </div>
+          <div className="pricing-grid">
+            {section.body.map((item, index) => (
+              <div key={item} className={`price-card ${index === 1 ? 'highlight' : ''}`} style={{ borderColor: index === 1 ? section.accent : '#e2e8f0' }}>
+                <h4>{item}</h4>
+                <div className="price-row">
+                  <span className="price">${index === 0 ? 19 : index === 1 ? 39 : 89}</span>
+                  <span className="month">/mo</span>
+                </div>
+                <ul>
+                  <li>Custom sections</li>
+                  <li>Fast publishing</li>
+                  <li>Support included</li>
+                </ul>
+                <button className="solid-btn" style={{ background: section.accent }}>{section.ctaText}</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {isTestimonial && (
+        <div className="testimonial-wrap">
+          <div className="quote-box" style={{ borderLeft: `6px solid ${section.accent}` }}>
+            <p>“{section.body[0]}”</p>
+            <div className="quote-meta">
+              <strong>Amelia Reed</strong>
+              <span>Product lead</span>
+            </div>
+          </div>
+          <div className="section-heading">
+            <span className="badge" style={{ background: `${section.accent}22`, color: section.accent }}>Reviews</span>
+            <h3>{section.title}</h3>
+            <p>{section.subtitle}</p>
+          </div>
+        </div>
+      )}
+
+      {isCTA && (
+        <div className="cta-box" style={{ background: `linear-gradient(135deg, ${section.accent}, #111827)` }}>
+          <h3>{section.title}</h3>
+          <p>{section.subtitle}</p>
+          <button className="solid-btn light">{section.ctaText}</button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function renderSectionMarkup(section: SectionItem, theme: Theme) {
+  const accent = section.accent;
+
+  switch (section.type) {
+    case 'hero':
+      return `
+        <section class="section" style="background:${theme.panel};">
+          <div class="wrap hero">
+            <div>
+              <div class="badge" style="background:${accent}22;color:${accent};">New</div>
+              <h1 style="font-size:3rem;margin:16px 0;">${section.title}</h1>
+              <p style="color:${theme.muted};font-size:1.1rem;max-width:560px;">${section.subtitle}</p>
+              <div class="cta-row" style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap;">
+                <a class="btn" href="#" style="background:${accent};">${section.ctaText}</a>
+                <a class="btn" href="#" style="background:transparent;color:${theme.ink};border:1px solid #dbe3f0;">Watch demo</a>
+              </div>
+            </div>
+            <div class="card" style="padding:28px;">
+              <div style="height:320px;border-radius:22px;background:linear-gradient(135deg,${accent},#111827);display:flex;align-items:flex-end;padding:20px;">
+                <div style="width:100%;background:rgba(255,255,255,0.1);backdrop-filter:blur(4px);border-radius:18px;padding:18px;">
+                  <div style="height:12px;width:120px;border-radius:999px;background:rgba(255,255,255,0.8);margin-bottom:12px;"></div>
+                  <div style="height:12px;width:90%;border-radius:999px;background:rgba(255,255,255,0.3);margin-bottom:8px;"></div>
+                  <div style="height:12px;width:80%;border-radius:999px;background:rgba(255,255,255,0.3);"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      `;
+    case 'features':
+      return `
+        <section class="section" style="background:${theme.background};">
+          <div class="wrap">
+            <div style="text-align:center;max-width:700px;margin:0 auto 40px;">
+              <div class="badge" style="background:${accent}22;color:${accent};">Features</div>
+              <h2 style="margin:16px 0 10px;font-size:2.5rem;">${section.title}</h2>
+              <p style="color:${theme.muted};">${section.subtitle}</p>
+            </div>
+            <div class="grid">
+              ${section.body
+                .map(
+                  (item) => `
+                  <div class="card">
+                    <div class="feature-icon" style="width:44px;height:44px;border-radius:12px;background:${accent}22;color:${accent};display:flex;align-items:center;justify-content:center;font-weight:700;">✦</div>
+                    <h3>${item}</h3>
+                    <p style="color:${theme.muted};">Flexible building blocks tailored for modern teams and launch-ready campaigns.</p>
+                  </div>
+                `,
+                )
+                .join('')}
+            </div>
+          </div>
+        </section>
+      `;
+    case 'pricing':
+      return `
+        <section class="section" style="background:${theme.panel};">
+          <div class="wrap">
+            <div style="text-align:center;max-width:700px;margin:0 auto 40px;">
+              <div class="badge" style="background:${accent}22;color:${accent};">Plans</div>
+              <h2 style="margin:16px 0 10px;font-size:2.5rem;">${section.title}</h2>
+              <p style="color:${theme.muted};">${section.subtitle}</p>
+            </div>
+            <div class="grid">
+              ${section.body
+                .map(
+                  (item, index) => `
+                    <div class="pricing-card" style="border:1px solid ${index === 1 ? accent : '#e2e8f0'};">
+                      <h3>${item}</h3>
+                      <div style="display:flex;align-items:flex-end;gap:8px; margin:18px 0;">
+                        <span style="font-size:2.25rem;font-weight:800;">${index === 0 ? '$19' : index === 1 ? '$39' : '$89'}</span>
+                        <span style="color:${theme.muted};">/mo</span>
+                      </div>
+                      <ul style="padding-left:18px;color:${theme.muted};line-height:2;">
+                        <li>Custom sections</li>
+                        <li>Fast publishing</li>
+                        <li>Support included</li>
+                      </ul>
+                      <a class="btn" href="#" style="display:inline-block;margin-top:12px;background:${accent};">${section.ctaText}</a>
+                    </div>
+                  `,
+                )
+                .join('')}
+            </div>
+          </div>
+        </section>
+      `;
+    case 'testimonial':
+      return `
+        <section class="section" style="background:${theme.background};">
+          <div class="wrap">
+            <div class="card" style="padding:36px;border-left:6px solid ${accent};">
+              <p style="font-size:1.6rem;line-height:1.5;">“${section.body[0]}”</p>
+              <div style="margin-top:20px;color:${theme.muted};">
+                <strong style="display:block;color:${theme.ink};">Amelia Reed</strong>
+                Product lead
+              </div>
+            </div>
+          </div>
+        </section>
+      `;
+    case 'cta':
+      return `
+        <section class="section" style="background:${theme.background};">
+          <div class="wrap">
+            <div class="cta" style="background:linear-gradient(135deg, ${accent}, #111827);color:white;">
+              <h2 style="margin:0 0 12px; font-size:2.5rem;">${section.title}</h2>
+              <p style="margin:0 0 20px; max-width:620px; opacity:.96;">${section.subtitle}</p>
+              <a class="btn" href="#" style="background:white;color:${theme.ink};">${section.ctaText}</a>
+            </div>
+          </div>
+        </section>
+      `;
+    default:
+      return '';
+  }
+}
+
+export default App;
